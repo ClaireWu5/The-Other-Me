@@ -10,7 +10,6 @@ import SynthesisMemo from "@/components/SynthesisMemo";
 import ArchiveDrawer from "@/components/ArchiveDrawer";
 import useLocalStorage from "@/lib/useLocalStorage";
 import { loadSession } from "@/lib/session";
-import { buildIcebreakerPrompt } from "@/lib/prompts";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -19,6 +18,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [apiError, setApiError] = useState("");
 
   // 备忘录状态
   const [memo, setMemo] = useState(null);
@@ -62,27 +62,24 @@ export default function ChatPage() {
 
   async function fetchIcebreaker(s) {
     setLoading(true);
+    setApiError("");
     try {
-      const icebreaker = buildIcebreakerPrompt({
-        name: s.name,
-        userMbti: s.mbti,
-        mirrorMbti: s.mirror,
-      });
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name: s.name,
           userMbti: s.mbti,
           mirrorMbti: s.mirror,
           mode: "icebreaker",
-          messages: [{ role: "user", content: icebreaker }],
         }),
       });
-      const data = await res.json();
+      const data = await readJsonResponse(res);
       const reply =
         data.reply || "我是你的另一面。此刻，有什么念头正在你心里盘旋？";
       setMessages([{ role: "assistant", content: reply, typed: false }]);
     } catch (e) {
+      setApiError(getFriendlyApiError(e));
       setMessages([
         {
           role: "assistant",
@@ -105,6 +102,7 @@ export default function ChatPage() {
     setMessages(nextMessages);
     scrollToBottom();
     setLoading(true);
+    setApiError("");
 
     try {
       // 构造给后端的对话历史（去掉 typed 标记）
@@ -118,13 +116,14 @@ export default function ChatPage() {
           messages: history,
         }),
       });
-      const data = await res.json();
+      const data = await readJsonResponse(res);
       const reply = data.reply || "……";
       setMessages((prev) => [...prev, { role: "assistant", content: reply, typed: false }]);
     } catch (e) {
+      setApiError(getFriendlyApiError(e));
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "（连接中断了，稍后再试试。）", typed: true },
+        { role: "assistant", content: "连接真实 AI 时出了点问题。检查网络或 API 配置后，我们可以从这里继续。", typed: true },
       ]);
     } finally {
       setLoading(false);
@@ -135,6 +134,7 @@ export default function ChatPage() {
   async function generateMemo() {
     if (!session || generatingMemo) return;
     setGeneratingMemo(true);
+    setApiError("");
     try {
       const history = messages.map((m) => ({ role: m.role, content: m.content }));
       const res = await fetch("/api/memo", {
@@ -146,13 +146,13 @@ export default function ChatPage() {
           messages: history,
         }),
       });
-      const data = await res.json();
+      const data = await readJsonResponse(res);
       if (data.memo) {
         setMemo(data.memo);
         setMemoSaved(false);
       }
     } catch (e) {
-      // ignore
+      setApiError(getFriendlyApiError(e));
     } finally {
       setGeneratingMemo(false);
     }
@@ -262,6 +262,12 @@ export default function ChatPage() {
                     )}
                   </AnimatePresence>
 
+                  {apiError && (
+                    <p className="w-full rounded-2xl border border-red-200/20 bg-red-500/10 px-4 py-3 text-xs leading-relaxed text-red-50/85">
+                      {apiError}
+                    </p>
+                  )}
+
                   <div
                     className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md"
                     style={{ WebkitBackdropFilter: "blur(12px)" }}
@@ -360,4 +366,27 @@ function MessageLine({ message, isLast, onTyped, onTick }) {
       </p>
     </motion.div>
   );
+}
+
+
+async function readJsonResponse(response) {
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.error || "请求失败");
+  }
+  return data;
+}
+
+function getFriendlyApiError(error) {
+  const message = String(error?.message || "");
+  if (message.includes("Connect Timeout") || message.includes("fetch failed")) {
+    return "真实 AI 接口连接超时。通常是当前网络无法访问 API 地址，或需要把 LLM_BASE_URL 换成你的服务商地址。";
+  }
+  if (message.includes("401") || message.includes("Unauthorized")) {
+    return "API Key 没有通过验证。请确认 Key、Base URL 和模型名属于同一个服务商。";
+  }
+  if (message.includes("404") || message.includes("model")) {
+    return "模型名或接口地址可能不匹配。请确认 LLM_MODEL 和 LLM_BASE_URL。";
+  }
+  return "真实 AI 接口暂时没有返回有效结果。请检查网络、API Key、Base URL 或模型名。";
 }

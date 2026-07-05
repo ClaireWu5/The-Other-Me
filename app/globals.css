@@ -4,6 +4,7 @@
 
 :root {
   --aura-bg: #9aa2b6;
+  --font-quicksand: "SF Pro Rounded", "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
 * {

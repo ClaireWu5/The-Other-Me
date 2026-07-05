@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Other Me 项目展示</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0c10;
+      --ink: #f5f3ee;
+      --muted: rgba(245, 243, 238, 0.68);
+      --dim: rgba(245, 243, 238, 0.48);
+      --line: rgba(245, 243, 238, 0.18);
+      --amber: #d9b45f;
+      --cyan: #6dc8d3;
+      --rose: #dd8d8d;
+      --green: #9bbf88;
+      --panel: rgba(21, 23, 30, 0.72);
+      --panel-soft: rgba(245, 243, 238, 0.045);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 18% 10%, rgba(109, 200, 211, 0.24), transparent 34%),
+        radial-gradient(circle at 85% 6%, rgba(217, 180, 95, 0.18), transparent 28%),
+        radial-gradient(circle at 70% 72%, rgba(221, 141, 141, 0.12), transparent 36%),
+        linear-gradient(145deg, #090a0e 0%, #10131a 52%, #090a0e 100%);
+      color: var(--ink);
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      letter-spacing: 0;
+      overflow-x: hidden;
+    }
+
+    body.cursor-active, body.cursor-active a, body.cursor-active button {
+      cursor: none;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.016) 1px, transparent 1px);
+      background-size: 38px 38px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.95), rgba(0,0,0,0.2));
+    }
+
+    ::selection {
+      color: #111318;
+      background: rgba(217, 180, 95, 0.82);
+      text-decoration: underline;
+      text-decoration-thickness: 0.12em;
+      text-underline-offset: 0.18em;
+    }
+
+    .glass-cursor {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 9999;
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      pointer-events: none;
+      opacity: 0;
+      transform: translate3d(-50%, -50%, 0) scale(0.8);
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      box-shadow:
+        0 0 28px rgba(109, 200, 211, 0.24),
+        inset 0 0 18px rgba(255,255,255,0.12);
+      backdrop-filter: blur(12px) saturate(150%);
+      -webkit-backdrop-filter: blur(12px) saturate(150%);
+      transition: opacity 160ms ease, transform 160ms ease, width 160ms ease, height 160ms ease;
+      mix-blend-mode: screen;
+    }
+
+    .glass-cursor.visible {
+      opacity: 1;
+      transform: translate3d(-50%, -50%, 0) scale(1);
+    }
+
+    .glass-cursor.selecting {
+      width: 52px;
+      height: 52px;
+      background: rgba(217, 180, 95, 0.14);
+      box-shadow:
+        0 0 34px rgba(217, 180, 95, 0.26),
+        inset 0 0 18px rgba(255,255,255,0.16);
+    }
+
+    .user-highlight {
+      border-bottom: 0.12em solid rgba(217, 180, 95, 0.96);
+      background: linear-gradient(to top, rgba(217, 180, 95, 0.34) 0 48%, transparent 48% 100%);
+      color: var(--ink);
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+
+    a { color: inherit; }
+
+    .progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 30;
+      height: 3px;
+      width: 0%;
+      background: linear-gradient(90deg, var(--cyan), var(--amber), var(--rose));
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 14px clamp(18px, 4vw, 56px);
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 12, 16, 0.72);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .logo {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.05);
+      font-size: 14px;
+      line-height: 0.86;
+      text-align: center;
+      color: var(--ink);
+    }
+
+    .brand-text {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .brand-text strong {
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .brand-text span {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    nav {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    nav::-webkit-scrollbar { display: none; }
+
+    nav a {
+      flex: 0 0 auto;
+      padding: 8px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    nav a:hover {
+      border-color: var(--line);
+      color: var(--ink);
+      background: rgba(255,255,255,0.04);
+    }
+
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      min-height: calc(100vh - 72px);
+      display: grid;
+      grid-template-columns: minmax(0, 1.06fr) minmax(300px, 0.94fr);
+      align-items: center;
+      gap: clamp(30px, 5vw, 70px);
+      padding: 58px 0 50px;
+    }
+
+    .eyebrow {
+      margin: 0 0 18px;
+      color: var(--cyan);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 { margin: 0; letter-spacing: 0; }
+
+    h1 {
+      max-width: 820px;
+      font-size: clamp(48px, 8vw, 96px);
+      line-height: 0.96;
+    }
+
+    .lead {
+      max-width: 720px;
+      margin: 28px 0 0;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 23px);
+      line-height: 1.65;
+    }
+
+    .thesis {
+      margin-top: 34px;
+      max-width: 650px;
+      padding-left: 18px;
+      border-left: 3px solid var(--amber);
+      color: rgba(245,243,238,0.88);
+      font-size: clamp(18px, 2vw, 24px);
+      line-height: 1.58;
+    }
+
+    .mirror-visual {
+      min-height: 450px;
+      position: relative;
+      display: grid;
+      place-items: center;
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      overflow: hidden;
+    }
+
+    .mirror-visual::before,
+    .mirror-visual::after {
+      content: "";
+      position: absolute;
+      inset: 10%;
+      border: 1px solid rgba(245,243,238,0.2);
+      transform: rotate(45deg);
+    }
+
+    .mirror-visual::after {
+      inset: 24%;
+      border-color: rgba(109,200,211,0.34);
+      transform: rotate(-45deg);
+    }
+
+    .type-pair {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 18px;
+      text-align: center;
+    }
+
+    .type {
+      font-size: clamp(42px, 7vw, 76px);
+      font-weight: 850;
+      line-height: 1;
+    }
+
+    .arrow {
+      color: var(--amber);
+      font-size: 34px;
+    }
+
+    .type-note {
+      max-width: 300px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    section {
+      padding: 58px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.82fr) minmax(280px, 1.18fr);
+      gap: 34px;
+      align-items: start;
+      margin-bottom: 28px;
+    }
+
+    .kicker {
+      color: var(--amber);
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      font-size: clamp(30px, 4vw, 48px);
+      line-height: 1.1;
+    }
+
+    .section-desc {
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.8;
+    }
+
+    .grid-2,
+    .grid-3,
+    .flow-grid,
+    .roadmap,
+    .research-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .flow-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .panel,
+    .flow-step,
+    .research-item,
+    .roadmap-item {
+      border: 1px solid var(--line);
+      background: var(--panel-soft);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .panel {
+      min-height: 230px;
+      padding: clamp(20px, 3vw, 28px);
+      display: grid;
+      align-content: start;
+      gap: 16px;
+    }
+
+    .panel h3,
+    .research-item h3,
+    .roadmap-item h3 {
+      font-size: 20px;
+      line-height: 1.32;
+    }
+
+    .panel p,
+    .research-item p,
+    .roadmap-item p,
+    .flow-step p,
+    .ref-list li {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.72;
+    }
+
+    .quote-band {
+      margin-top: 14px;
+      padding: clamp(24px, 4vw, 42px);
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .quote-band p {
+      margin: 0;
+      max-width: 920px;
+      color: rgba(245,243,238,0.9);
+      font-size: clamp(22px, 3vw, 34px);
+      line-height: 1.45;
+    }
+
+    .flow-step {
+      min-height: 168px;
+      padding: 18px;
+      display: grid;
+      align-content: space-between;
+      gap: 18px;
+    }
+
+    .flow-step span,
+    .tag {
+      color: var(--amber);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .flow-step strong {
+      display: block;
+      font-size: 19px;
+      line-height: 1.35;
+    }
+
+    .research-list,
+    .roadmap {
+      grid-template-columns: 1fr;
+    }
+
+    .research-item,
+    .roadmap-item {
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr);
+      gap: 18px;
+      padding: 21px;
+    }
+
+    .tag { color: var(--green); }
+
+    .ref-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: ref;
+    }
+
+    .ref-list li {
+      counter-increment: ref;
+      padding: 15px 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .ref-list li::before {
+      content: counter(ref) ". ";
+      color: var(--amber);
+      font-weight: 800;
+    }
+
+    .closing {
+      padding-bottom: 82px;
+    }
+
+    .closing-card {
+      padding: clamp(28px, 5vw, 56px);
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, rgba(109,200,211,0.1), rgba(217,180,95,0.08), rgba(255,255,255,0.035));
+    }
+
+    .closing-card p {
+      margin: 0;
+      max-width: 930px;
+      color: rgba(245,243,238,0.92);
+      font-size: clamp(24px, 3.4vw, 42px);
+      line-height: 1.42;
+    }
+
+    @media (max-width: 900px) {
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .hero, .section-head, .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .hero { min-height: auto; }
+      .mirror-visual { min-height: 330px; }
+      .flow-grid, .ref-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .research-item, .roadmap-item { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      main { width: min(100% - 24px, 1120px); }
+      .flow-grid, .ref-list { grid-template-columns: 1fr; }
+      .panel { min-height: auto; }
+    }
+
+    @media (pointer: coarse) {
+      body.cursor-active, body.cursor-active a, body.cursor-active button { cursor: auto; }
+      .glass-cursor { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="glass-cursor" id="glassCursor" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">oO<br>M</div>
+      <div class="brand-text">
+        <strong>The Other Me</strong>
+        <span>AI mirror dialogue for self-reflection</span>
+      </div>
+    </div>
+    <nav aria-label="页面导航">
+      <a href="#origin">缘起</a>
+      <a href="#concept">概念</a>
+      <a href="#product">体验</a>
+      <a href="#research">理论</a>
+      <a href="#roadmap">迭代</a>
+    </nav>
+  </header>
+
+  <main>
+    <header class="hero" id="top">
+      <div>
+        <p class="eyebrow">The Other Me</p>
+        <h1>让标签成为对话的入口</h1>
+        <p class="lead">The Other Me 是一个基于 MBTI 镜像视角的 AI 对话工具。它不试图定义一个人，而是在决策、犹豫和情绪卡点中，引入一个相反但互补的观察位置。</p>
+        <div class="thesis">不是问“我到底是哪一类人”，而是问：当另一个我也在场，它会看见什么？</div>
+      </div>
+      <div class="mirror-visual" aria-label="ENTP 到 ISFJ 的镜像人格示意">
+        <div class="type-pair">
+          <div class="type">ENTP</div>
+          <div class="arrow">↓</div>
+          <div class="type">ISFJ</div>
+          <div class="type-note">从熟悉的自我叙事出发，生成一个反向视角，再回到整合。</div>
+        </div>
+      </div>
+    </header>
+
+    <section id="origin">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Origin</div>
+          <h2>项目缘起</h2>
+        </div>
+        <p class="section-desc">这个项目来自对人格标签流动性的观察：测试结果会改变，分类也会转化。标签不是终点，它更像一个临时坐标。</p>
+      </div>
+      <div class="grid-2">
+        <article class="panel">
+          <h3>MBTI 的变化经验</h3>
+          <p>从 ESFJ 到 ENTP，除了 E 之外的三个字母都发生了变化。这个经历提示：MBTI 更像是在某个阶段对自我的描述，而不是永久身份。</p>
+        </article>
+        <article class="panel">
+          <h3>分类可以被重新使用</h3>
+          <p>《内在的天空》启发了一个思路：分类既可能带来刻板印象，也可以被理解为不同力量的组合。人不是被单一标签完全定义的。</p>
+        </article>
+      </div>
+      <div class="quote-band">
+        <p>如果标签不可避免，The Other Me 选择把它反过来使用：进入标签，反转标签，再打破标签。</p>
+      </div>
+    </section>
+
+    <section id="concept">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Concept</div>
+          <h2>镜像人格</h2>
+        </div>
+        <p class="section-desc">“镜像人格”不是把人拆成两个个体，而是一种产品化的对话结构。它让用户暂时离开最熟悉的反应方式，借由 AI 听见另一种内部声音。</p>
+      </div>
+      <div class="grid-3">
+        <article class="panel">
+          <h3>反向视角</h3>
+          <p>系统将当前 MBTI 的四个维度反转，例如 ENTP 对应 ISFJ，形成一个相反但互补的观察位置。</p>
+        </article>
+        <article class="panel">
+          <h3>内在协商</h3>
+          <p>AI 不扮演权威，也不替用户做决定。它更像一个克制的内在对话者，帮助用户看见盲区和边界。</p>
+        </article>
+        <article class="panel">
+          <h3>整合输出</h3>
+          <p>对话结束后，系统生成自我整合备忘录，把冲突、诉求、担心和下一步行动收束成一个可带走的结果。</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="product">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Experience</div>
+          <h2>产品体验</h2>
+        </div>
+        <p class="section-desc">体验被设计成一段轻量的内在对话：从当前自我进入，到镜像视角回应，再到行动层面的整合。</p>
+      </div>
+      <div class="flow-grid">
+        <div class="flow-step">
+          <span>01</span>
+          <strong>输入当前 MBTI</strong>
+          <p>承认此刻的自我理解，同时保留变化空间。</p>
+        </div>
+        <div class="flow-step">
+          <span>02</span>
+          <strong>生成镜像人格</strong>
+          <p>用反转维度创造一个新的观察位置。</p>
+        </div>
+        <div class="flow-step">
+          <span>03</span>
+          <strong>展开 AI 对话</strong>
+          <p>围绕现实困扰补充被忽略的视角。</p>
+        </div>
+        <div class="flow-step">
+          <span>04</span>
+          <strong>形成整合备忘录</strong>
+          <p>沉淀主题、两种声音和下一步行动。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="research">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Grounding</div>
+          <h2>理论关联</h2>
+        </div>
+        <p class="section-desc">“镜像人格”是产品概念，不是已有的统一学术术语。它与阴影、心理类型、可能自我、对话自我和自我复杂性形成关联。</p>
+      </div>
+      <div class="research-list">
+        <article class="research-item">
+          <div class="tag">Shadow</div>
+          <div>
+            <h3>荣格的阴影</h3>
+            <p>阴影指向意识自我之外未被承认、未被整合的心理内容。项目借鉴的是“看见主导叙事之外部分”的思路，而不是临床解释。</p>
+          </div>
+        </article>
+        <article class="research-item">
+          <div class="tag">Types</div>
+          <div>
+            <h3>心理类型与认知功能</h3>
+            <p>荣格的心理类型理论是 MBTI 的重要来源。项目把四字母结构作为认知偏好的语言，而不是人格真相的判决书。</p>
+          </div>
+        </article>
+        <article class="research-item">
+          <div class="tag">Possible</div>
+          <div>
+            <h3>Possible Selves</h3>
+            <p>人不仅拥有现在的自我，也拥有希望成为、害怕成为、可能成为的自我。镜像人格可以被看作一个临时召唤出的可能自我。</p>
+          </div>
+        </article>
+        <article class="research-item">
+          <div class="tag">Dialog</div>
+          <div>
+            <h3>对话自我理论</h3>
+            <p>自我可以被理解为多个内部位置的对话系统。AI 在这里扮演一个内部位置，帮助用户把模糊分歧说出来。</p>
+          </div>
+        </article>
+        <article class="research-item">
+          <div class="tag">Complex</div>
+          <div>
+            <h3>自我复杂性</h3>
+            <p>当一个人能同时看见自己的多个面向，就更可能在压力下保有弹性，而不被单一评价或单一标签吞没。</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Roadmap</div>
+          <h2>后续迭代</h2>
+        </div>
+        <p class="section-desc">下一阶段的方向，是从一次有趣的镜像对话，走向一个持续理解自我决策模式的 AI 反思工具。</p>
+      </div>
+      <div class="roadmap">
+        <article class="roadmap-item">
+          <div class="tag">P0</div>
+          <div>
+            <h3>荣格八维</h3>
+            <p>从简单的四字母反转，升级到 Ne、Ti、Fe、Si 等认知功能关系，让镜像回应更细致。</p>
+          </div>
+        </article>
+        <article class="roadmap-item">
+          <div class="tag">P1</div>
+          <div>
+            <h3>长期档案</h3>
+            <p>把一次对话后的备忘录沉淀为自我模式地图，呈现用户反复出现的主题和决策惯性。</p>
+          </div>
+        </article>
+        <article class="roadmap-item">
+          <div class="tag">P1</div>
+          <div>
+            <h3>重大决策模式</h3>
+            <p>针对换工作、关系选择、创业、搬迁等议题，引入更结构化的决策框架和最小验证动作。</p>
+          </div>
+        </article>
+        <article class="roadmap-item">
+          <div class="tag">P0</div>
+          <div>
+            <h3>安全边界</h3>
+            <p>明确产品不是临床治疗。遇到高风险心理危机时，系统停止人格扮演，并提供清晰支持资源。</p>
+          </div>
+        </article>
+        <article class="roadmap-item">
+          <div class="tag">P2</div>
+          <div>
+            <h3>去隐私化分享</h3>
+            <p>让用户可以分享主题或行动建议，而不暴露完整心理内容。</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="refs">
+      <div class="section-head">
+        <div>
+          <div class="kicker">References</div>
+          <h2>参考来源</h2>
+        </div>
+        <p class="section-desc">项目借鉴下列心理学理论和人格研究，并将其转化为轻量的 AI 反思体验。</p>
+      </div>
+      <ol class="ref-list">
+        <li>C. G. Jung, <em>Psychological Types</em>（1921）。</li>
+        <li>C. G. Jung, <em>Aion: Researches into the Phenomenology of the Self</em>（1951）。</li>
+        <li>Markus, H., &amp; Nurius, P. (1986). Possible selves. DOI: 10.1037/0003-066X.41.9.954。</li>
+        <li>Hermans, H. J. M., Kempen, H. J. G., &amp; van Loon, R. J. P. (1992). The dialogical self. DOI: 10.1037/0003-066X.47.1.23。</li>
+        <li>Linville, P. W. (1987). Self-complexity as a cognitive buffer. DOI: 10.1037/0022-3514.52.4.663。</li>
+        <li>McCrae, R. R., &amp; Costa, P. T. Jr. (1989). Reinterpreting the MBTI from the five-factor model. DOI: 10.1111/j.1467-6494.1989.tb00759.x。</li>
+      </ol>
+    </section>
+
+    <section class="closing">
+      <div class="closing-card">
+        <p>The Other Me 让 AI 不再替人下结论，而是在一个人被惯性困住时，帮他多看一面。</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const progress = document.getElementById("progress");
+    const cursor = document.getElementById("glassCursor");
+    const main = document.querySelector("main");
+
+    const updateProgress = () => {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const ratio = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
+      progress.style.width = Math.min(100, Math.max(0, ratio * 100)) + "%";
+    };
+
+    const showCursor = (event) => {
+      if (!window.matchMedia("(pointer: fine)").matches) return;
+      document.body.classList.add("cursor-active");
+      cursor.classList.add("visible");
+      moveCursor(event);
+    };
+
+    const hideCursor = () => {
+      cursor.classList.remove("visible", "selecting");
+      document.body.classList.remove("cursor-active");
+    };
+
+    const moveCursor = (event) => {
+      cursor.style.left = event.clientX + "px";
+      cursor.style.top = event.clientY + "px";
+    };
+
+    const markSelection = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || !selection.toString().trim()) return;
+      const range = selection.getRangeAt(0);
+      if (!main.contains(range.commonAncestorContainer)) return;
+
+      const mark = document.createElement("span");
+      mark.className = "user-highlight";
+
+      try {
+        range.surroundContents(mark);
+      } catch (error) {
+        const fragment = range.extractContents();
+        mark.appendChild(fragment);
+        range.insertNode(mark);
+      }
+
+      selection.removeAllRanges();
+    };
+
+    window.addEventListener("scroll", updateProgress, { passive: true });
+    window.addEventListener("pointerenter", showCursor);
+    window.addEventListener("pointermove", moveCursor, { passive: true });
+    window.addEventListener("pointerleave", hideCursor);
+    window.addEventListener("pointerdown", () => cursor.classList.add("selecting"));
+    window.addEventListener("pointerup", () => {
+      cursor.classList.remove("selecting");
+      setTimeout(markSelection, 0);
+    });
+    window.addEventListener("keyup", (event) => {
+      if (event.key === "Shift" || event.key.startsWith("Arrow")) setTimeout(markSelection, 0);
+    });
+
+    updateProgress();
+  </script>
+</body>
+</html>
